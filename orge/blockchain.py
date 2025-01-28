@@ -1,92 +1,119 @@
-import time
 import hashlib
+import time
 
-class Blockchain:
-    def __init__(self, block_reward=50):
-        self.chain = []  # List of blocks in the chain
-        self.pending_transactions = []  # List of unconfirmed transactions
-        self.block_reward = block_reward  # Base mining reward
-        self.create_genesis_block()  # Create the first block in the chain
 
-    def create_genesis_block(self):
-        """Creates the genesis block (the first block in the blockchain)."""
-        genesis_block = Block(0, [], "0")
-        self.chain.append(genesis_block)
+class Transaction:
+    """Represents a single transaction in the blockchain."""
 
-    def get_latest_block(self):
-        """Returns the most recent block in the chain."""
-        return self.chain[-1]
+    def __init__(self, sender, receiver, amount):
+        self.sender = sender
+        self.receiver = receiver
+        self.amount = amount
 
-    def add_transaction(self, sender, receiver, amount, fee=0.001):
-        """Adds a new transaction to the list of pending transactions."""
-        if amount <= 0:
-            raise ValueError("Transaction amount must be greater than zero.")
-
-        transaction = Transaction(sender, receiver, amount, fee)
-        self.pending_transactions.append(transaction)
-
-    def mine_block(self, miner_address):
-        """Creates a new block, adds pending transactions, and appends it to the blockchain."""
-        if not self.pending_transactions:
-            print("No transactions to mine.")
-            return
-
-        latest_block = self.get_latest_block()  # Get the latest block
-        new_block = Block(
-            index=len(self.chain),
-            transactions=self.pending_transactions,
-            previous_hash=latest_block.hash,
-        )
-
-        # Add miner reward
-        miner_reward_transaction = Transaction(
-            sender="Network",
-            receiver=miner_address,
-            amount=self.block_reward,
-            fee=0,
-        )
-        new_block.transactions.append(miner_reward_transaction)
-
-        # Append the new block to the chain
-        self.chain.append(new_block)
-        self.pending_transactions = []  # Clear the pending transactions
-        print(f"Block {new_block.index} mined and added to the blockchain!")
-
-    def is_chain_valid(self):
-        """Validates the integrity of the blockchain."""
-        for i in range(1, len(self.chain)):
-            current_block = self.chain[i]
-            previous_block = self.chain[i - 1]
-
-            if current_block.hash != current_block.calculate_hash():
-                return False
-
-            if current_block.previous_hash != previous_block.hash:
-                return False
-
-        return True
+    def __repr__(self):
+        return f"Transaction(sender='{self.sender}', receiver='{self.receiver}', amount={self.amount})"
 
 
 class Block:
+    """Represents a block in the blockchain."""
+
     def __init__(self, index, transactions, previous_hash):
         self.index = index
         self.timestamp = time.time()
         self.transactions = transactions
         self.previous_hash = previous_hash
+        self.nonce = 0
         self.hash = self.calculate_hash()
 
     def calculate_hash(self):
-        """Calculates the hash of the block."""
-        block_string = f"{self.index}{self.timestamp}{self.transactions}{self.previous_hash}"
-        return hashlib.sha256(block_string.encode()).hexdigest()
+        block_content = (
+            str(self.index)
+            + str(self.timestamp)
+            + str(self.transactions)
+            + self.previous_hash
+            + str(self.nonce)
+        )
+        return hashlib.sha256(block_content.encode()).hexdigest()
+
+    def mine_block(self, difficulty):
+        target = "0" * difficulty
+        while self.hash[:difficulty] != target:
+            self.nonce += 1
+            self.hash = self.calculate_hash()
 
 
-class Transaction:
-    def __init__(self, sender, receiver, amount, fee=0.001):
-        self.sender = sender
-        self.receiver = receiver
-        self.amount = amount
-        self.fee = fee
+class Blockchain:
+    """Represents the blockchain."""
 
-    def __repr__(self):
-        return f"Transaction(from: {self.sender}, to: {self.receiver}, amount: {self.amount}, fee: {self.fee})"
+    def __init__(self):
+        self.chain = [self.create_genesis_block()]
+        self.pending_transactions = []
+        self.difficulty = 2  # Setting the difficulty attribute
+        self.mining_reward = 50  # Reward for mining a block
+        self.balances = {}  # Tracks wallet balances
+
+    def create_genesis_block(self):
+        """Creates the genesis block (first block of the blockchain)."""
+        return Block(0, [], "0")
+
+    def get_latest_block(self):
+        """Returns the latest block in the chain."""
+        return self.chain[-1]
+
+    def add_transaction(self, sender, receiver, amount):
+        """Adds a new transaction to the list of pending transactions."""
+        if sender != "Network" and self.balances.get(sender, 0) < amount:
+            raise ValueError("Insufficient balance for transaction.")
+        transaction = Transaction(sender, receiver, amount)
+        self.pending_transactions.append(transaction)
+
+    def mine_pending_transactions(self, miner_address):
+        """Mines a new block with all pending transactions and rewards the miner."""
+        if not self.pending_transactions:
+            print("No transactions to mine.")
+            return
+
+        # Create a new block
+        new_block = Block(
+            index=len(self.chain),
+            transactions=self.pending_transactions,
+            previous_hash=self.get_latest_block().hash,
+        )
+        new_block.mine_block(self.difficulty)
+
+        # Add the new block to the chain
+        self.chain.append(new_block)
+
+        # Reward the miner
+        self.add_transaction("Network", miner_address, self.mining_reward)
+
+        # Update balances
+        self.update_balances(new_block)
+
+        # Clear pending transactions
+        self.pending_transactions = []
+
+        print(f"Block {new_block.index} mined successfully! Hash: {new_block.hash}")
+
+    def update_balances(self, block):
+        """Updates wallet balances based on the transactions in the block."""
+        for transaction in block.transactions:
+            if transaction.sender != "Network":
+                self.balances[transaction.sender] = self.balances.get(transaction.sender, 0) - transaction.amount
+            self.balances[transaction.receiver] = self.balances.get(transaction.receiver, 0) + transaction.amount
+
+    def is_chain_valid(self):
+        """Validates the entire blockchain."""
+        for i in range(1, len(self.chain)):
+            current_block = self.chain[i]
+            previous_block = self.chain[i - 1]
+
+            # Check if the hash of the block is correct
+            if current_block.hash != current_block.calculate_hash():
+                return False
+
+            # Check if the block points to the correct previous hash
+            if current_block.previous_hash != previous_block.hash:
+                return False
+
+        return True
