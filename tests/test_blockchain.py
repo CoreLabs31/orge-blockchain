@@ -9,16 +9,23 @@ def test_blockchain():
     # Initialize the blockchain
     orge_blockchain = Blockchain()
 
-    # Add some blocks with sample data
-    orge_blockchain.add_block("First block data")
-    orge_blockchain.add_block("Second block data")
-    orge_blockchain.add_block("Third block data")
+    # Add some transactions
+    orge_blockchain.add_transaction("Alice", "Bob", 50)
+    orge_blockchain.add_transaction("Charlie", "Dave", 30)
 
-    # Print the blockchain details
+    # Mine a block
+    print("Mining a block...")
+    orge_blockchain.mine_block()
+
+    # Add more transactions and mine another block
+    orge_blockchain.add_transaction("Eve", "Frank", 100)
+    print("Mining another block...")
+    orge_blockchain.mine_block()
+
+    # Print the blockchain
     for block in orge_blockchain.chain:
         print(f"Block {block.index}:")
-        print(f"  Timestamp: {block.timestamp}")
-        print(f"  Data: {block.data}")
+        print(f"  Transactions: {block.transactions}")
         print(f"  Previous Hash: {block.previous_hash}")
         print(f"  Hash: {block.hash}")
         print("\n")
@@ -29,3 +36,4 @@ def test_blockchain():
 
 if __name__ == "__main__":
     test_blockchain()
+
