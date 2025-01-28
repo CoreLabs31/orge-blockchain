@@ -37,6 +37,7 @@ class Block:
 
 
 class Blockchain:
+    class Blockchain:
     def __init__(self, block_reward=50):
         self.chain = []
         self.pending_transactions = []  # List of unconfirmed transactions
@@ -47,15 +48,20 @@ class Blockchain:
         genesis_block = Block(0, [], "0")
         self.chain.append(genesis_block)
 
-    def get_latest_block(self):
-        return self.chain[-1]
-
     def add_transaction(self, sender, receiver, amount, fee=0.001):
+        """
+        Add a new transaction to the list of pending transactions.
+        :param sender: Address of the sender
+        :param receiver: Address of the receiver
+        :param amount: Amount being transferred
+        :param fee: Transaction fee
+        """
         if amount <= 0:
             raise ValueError("Transaction amount must be greater than zero.")
 
         transaction = Transaction(sender, receiver, amount, fee)
         self.pending_transactions.append(transaction)
+
 
     def mine_block(self, miner_address):
         if not self.pending_transactions:
