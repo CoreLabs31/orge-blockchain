@@ -20,3 +20,9 @@ We welcome contributors! Please see the [CONTRIBUTING.md](CONTRIBUTING.md) for g
 
 ## License
 This project is licensed under the [MIT License](LICENSE).
+
+### Running the P2P Node
+1. Install dependencies: `pip install -r requirements.txt`
+2. Start a node: `python peer_to_peer/p2p_network.py`
+3. Use `/connect_node` to connect nodes and `/new_transaction` or `/mine_block` to test functionality.
+
