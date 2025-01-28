@@ -1,44 +1,64 @@
 import hashlib
 import time
 
+
+class Transaction:
+    def __init__(self, sender, receiver, amount):
+        self.sender = sender
+        self.receiver = receiver
+        self.amount = amount
+
+    def __repr__(self):
+        return f"Transaction(from: {self.sender}, to: {self.receiver}, amount: {self.amount})"
+
+
 class Block:
-    def __init__(self, index, timestamp, data, previous_hash):
+    def __init__(self, index, transactions, previous_hash, timestamp=None):
         self.index = index
-        self.timestamp = timestamp
-        self.data = data
+        self.transactions = transactions  # List of transactions
         self.previous_hash = previous_hash
+        self.timestamp = timestamp or time.time()
         self.hash = self.calculate_hash()
 
     def calculate_hash(self):
-        # Combine the block's properties into a single string, then hash it.
-        block_string = f"{self.index}{self.timestamp}{self.data}{self.previous_hash}"
+        transactions_str = "".join(str(tx) for tx in self.transactions)
+        block_string = f"{self.index}{transactions_str}{self.previous_hash}{self.timestamp}"
         return hashlib.sha256(block_string.encode()).hexdigest()
+
 
 class Blockchain:
     def __init__(self):
         self.chain = []
+        self.pending_transactions = []  # List of unconfirmed transactions
         self.create_genesis_block()
 
     def create_genesis_block(self):
-        # The first block of the blockchain
-        genesis_block = Block(0, time.time(), "Genesis Block", "0")
+        genesis_block = Block(0, [], "0")
         self.chain.append(genesis_block)
 
     def get_latest_block(self):
         return self.chain[-1]
 
-    def add_block(self, data):
+    def add_transaction(self, sender, receiver, amount):
+        transaction = Transaction(sender, receiver, amount)
+        self.pending_transactions.append(transaction)
+
+    def mine_block(self):
+        if not self.pending_transactions:
+            print("No transactions to mine.")
+            return
+
         latest_block = self.get_latest_block()
         new_block = Block(
-            index=latest_block.index + 1,
-            timestamp=time.time(),
-            data=data,
-            previous_hash=latest_block.hash,
+            index=len(self.chain),
+            transactions=self.pending_transactions,
+            previous_hash=latest_block.hash
         )
         self.chain.append(new_block)
+        self.pending_transactions = []  # Clear pending transactions after mining
+        print(f"Block {new_block.index} has been mined!")
 
     def is_chain_valid(self):
-        # Validate the integrity of the blockchain
         for i in range(1, len(self.chain)):
             current_block = self.chain[i]
             previous_block = self.chain[i - 1]
@@ -50,4 +70,3 @@ class Blockchain:
                 return False
 
         return True
-
